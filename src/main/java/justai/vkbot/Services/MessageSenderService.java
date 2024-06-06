@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -20,6 +19,7 @@ public class MessageSenderService {
     @Value("${vk.access.token}")
     private String accessToken;
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageSenderService.class);
+
     public ResponseEntity<String> reflectMessage(Map<String, Object> request) {
         Map<String, Object> object = (Map<String, Object>) request.get("object");
         Map<String, Object> message = (Map<String, Object>) object.get("message");
@@ -32,26 +32,24 @@ public class MessageSenderService {
     }
 
     private void sendMessage(Integer userId, String message) {
-        try {
-            String encodedMessage = URLEncoder.encode(message, StandardCharsets.UTF_8.toString());
-            String url = "https://api.vk.com/method/messages.send" +
-                    "?peer_id=" + userId +
-                    "&message=" + encodedMessage +
-                    "&random_id=0" +
-                    "&access_token=" + accessToken +
-                    "&v=5.199";
+        String encodedMessage = URLEncoder.encode(message, StandardCharsets.UTF_8);
+        StringBuilder url = new StringBuilder();
+        url.append("https://api.vk.com/method/messages.send")
+                .append("?peer_id=").append(userId)
+                .append("&message=").append(encodedMessage)
+                .append("&random_id=0")
+                .append("&access_token=").append(accessToken)
+                .append("&v=5.199");
 
-            LOGGER.info("Sending message to user {}: {}", userId, message);
+        LOGGER.info("Sending message to user {}: {}", userId, message);
 
-            try (CloseableHttpClient client = HttpClients.createDefault()) {
-                HttpGet request = new HttpGet(url);
-                client.execute(request);
-                LOGGER.info("Message sent");
-            } catch (IOException e) {
-                LOGGER.error("Error sending message", e);
-            }
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.error("Error encoding message", e);
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
+            HttpGet request = new HttpGet(url.toString());
+            client.execute(request);
+            LOGGER.info("Message sent");
+        } catch (IOException e) {
+            LOGGER.error("Error sending message {}", e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 }
